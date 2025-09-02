@@ -1,22 +1,63 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<title>Simulador UTEG con Audio</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Simulador UTEG · Simple + Audio</title>
+<style>
+  body{font-family:sans-serif;margin:0;padding:0;background:#f6f7fb}
+  .wrap{max-width:900px;margin:20px auto;padding:16px;background:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.05)}
+  h1{font-size:20px;margin:0 0 10px;color:#003C71}
+  .chat{border:1px solid #ddd;border-radius:8px;height:400px;overflow:auto;padding:10px;margin-bottom:10px}
+  .msg{margin-bottom:8px;padding:6px 10px;border-radius:8px;max-width:70%}
+  .ai{background:#eefaf7;border:1px solid #cdeee2}
+  .you{background:#eef4ff;border:1px solid #d7e5ff;margin-left:auto}
+  .composer{display:flex;gap:6px}
+  textarea{flex:1;resize:vertical;min-height:60px;padding:6px;border-radius:6px;border:1px solid #ccc}
+  button{padding:6px 12px;border:none;border-radius:6px;background:#003C71;color:#fff;cursor:pointer}
+  button:disabled{opacity:0.6;cursor:not-allowed}
+</style>
 </head>
 <body>
-<h1>Simulador UTEG con Audio</h1>
-<p>Este es un ejemplo del simulador con soporte de audio. Para usarlo, súbelo a un hosting HTTPS.</p>
+<div class="wrap">
+  <h1>Simulador de llamada · UTEG</h1>
+  <label>Escenario:</label>
+  <select id="scenario">
+    <option value="0">Licenciatura Semestral UdeG</option>
+    <option value="1">Licenciatura Cuatrimestral (CEP/SEP)</option>
+    <option value="2">Bachillerato Intensivo (BIS)</option>
+    <option value="3">Bachillerato General (BGC)</option>
+  </select>
+  <div id="chat" class="chat"></div>
+  <div class="composer">
+    <textarea id="input" placeholder="Escribe tu respuesta aquí…"></textarea>
+    <button id="send">Enviar</button>
+  </div>
+  <div style="margin-top:10px">
+    <button id="recBtn">🎙️ Grabar</button>
+    <button id="stopBtn" disabled>■ Detener</button>
+    <button id="dlBtn" disabled>⬇️ Descargar</button>
+    <span id="recStatus">Micrófono inactivo</span>
+  </div>
+  <audio id="player" controls style="margin-top:10px;width:100%"></audio>
+</div>
 <script>
-async function testMic(){
-  try{
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    alert("Micrófono OK: " + stream.getTracks().length + " pista(s)");
-  }catch(err){
-    alert("Error al acceder al micrófono: " + err.name + " — " + err.message);
-  }
-}
+const escenarios=[
+ "Licenciatura Semestral UdeG",
+ "Licenciatura Cuatrimestral (CEP/SEP)",
+ "Bachillerato Intensivo (BIS)",
+ "Bachillerato General (BGC)"
+];
+const chat=document.getElementById("chat"),input=document.getElementById("input");
+function addMsg(who,text){const d=document.createElement("div");d.className="msg "+who;d.textContent=text;chat.appendChild(d);chat.scrollTop=chat.scrollHeight;}
+document.getElementById("send").onclick=()=>{const t=input.value.trim();if(!t)return;addMsg("you",t);input.value="";setTimeout(()=>addMsg("ai","Gracias por tu respuesta sobre "+escenarios[document.getElementById("scenario").value]+"."),500);};
+// ==== Audio ====
+const recBtn=document.getElementById("recBtn"),stopBtn=document.getElementById("stopBtn"),dlBtn=document.getElementById("dlBtn"),player=document.getElementById("player"),recStatus=document.getElementById("recStatus");
+let mediaRec,chunks=[],lastBlob;
+async function ensureMic(){try{return await navigator.mediaDevices.getUserMedia({audio:true});}catch(e){alert("No pude acceder al micrófono: "+e.message);}}
+recBtn.onclick=async()=>{const stream=await ensureMic();if(!stream)return;chunks=[];mediaRec=new MediaRecorder(stream);mediaRec.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};mediaRec.onstop=()=>{lastBlob=new Blob(chunks,{type:"audio/webm"});player.src=URL.createObjectURL(lastBlob);dlBtn.disabled=false;recStatus.textContent="Grabado listo";};mediaRec.start();recBtn.disabled=true;stopBtn.disabled=false;recStatus.textContent="Grabando…";};
+stopBtn.onclick=()=>{if(mediaRec&&mediaRec.state!=="inactive"){mediaRec.stop();recBtn.disabled=false;stopBtn.disabled=true;}};
+dlBtn.onclick=()=>{if(!lastBlob)return;const a=document.createElement("a");a.href=URL.createObjectURL(lastBlob);a.download="respuesta.webm";a.click();};
 </script>
-<button onclick="testMic()">Probar micrófono</button>
 </body>
 </html>
