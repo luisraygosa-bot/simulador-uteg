@@ -3,61 +3,487 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Simulador UTEG · Simple + Audio</title>
+<title>Simulador UTEG · Cliente inteligente (FIX inicio)</title>
 <style>
-  body{font-family:sans-serif;margin:0;padding:0;background:#f6f7fb}
-  .wrap{max-width:900px;margin:20px auto;padding:16px;background:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.05)}
-  h1{font-size:20px;margin:0 0 10px;color:#003C71}
-  .chat{border:1px solid #ddd;border-radius:8px;height:400px;overflow:auto;padding:10px;margin-bottom:10px}
-  .msg{margin-bottom:8px;padding:6px 10px;border-radius:8px;max-width:70%}
-  .ai{background:#eefaf7;border:1px solid #cdeee2}
-  .you{background:#eef4ff;border:1px solid #d7e5ff;margin-left:auto}
-  .composer{display:flex;gap:6px}
-  textarea{flex:1;resize:vertical;min-height:60px;padding:6px;border-radius:6px;border:1px solid #ccc}
-  button{padding:6px 12px;border:none;border-radius:6px;background:#003C71;color:#fff;cursor:pointer}
-  button:disabled{opacity:0.6;cursor:not-allowed}
+  :root{--brand:#003C71;--accent:#00A3AD;--ink:#1f2937;--muted:#6b7280;--bg:#f6f7fb;--card:#fff;--ring:rgba(0,60,113,.18)}
+  *{box-sizing:border-box} html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif}
+  .wrap{max-width:980px;margin:20px auto;padding:16px}
+  h1{font-size:22px;margin:0 0 12px}
+  .grid{display:grid;grid-template-columns:340px 1fr;gap:16px}
+  @media (max-width:900px){.grid{grid-template-columns:1fr}}
+  .panel{background:var(--card);border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,.05)}
+  .panel .hd{padding:12px;border-bottom:1px solid #eef1f5;font-weight:700}
+  .panel .bd{padding:12px}
+  .row{display:grid;gap:6px;margin-bottom:10px}
+  label{font-size:12px;color:var(--muted)}
+  select,textarea,input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #d1d5db;background:#fff}
+  select:focus,textarea:focus,input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 4px var(--ring)}
+  .actions{display:flex;gap:10px;flex-wrap:wrap}
+  button{cursor:pointer;border:1px solid var(--brand);background:var(--brand);color:#fff;border-radius:10px;padding:10px 14px;font-weight:700}
+  button.ghost{background:#fff;color:var(--brand)}
+  .btn-accent{background:#00A3AD;border-color:#00A3AD}
+  .chat{display:flex;flex-direction:column;height:620px}
+  .log{flex:1;overflow:auto;padding:12px;background:linear-gradient(#fff,#fafbff)}
+  .msg{display:flex;gap:8px;margin-bottom:10px}
+  .bubble{max-width:78%;padding:10px 12px;border-radius:12px;line-height:1.35;border:1px solid #e5e7eb;background:#fff;font-size:14px}
+  .you .bubble{background:#eef4ff;border-color:#d7e5ff}
+  .ai .bubble{background:#eefaf7;border-color:#cdeee2}
+  .avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:12px}
+  .avatar.ai{background:var(--brand)} .avatar.you{background:#6b21a8}
+  .composer{border-top:1px solid #eef1f5;padding:10px;background:#fff;border-bottom-left-radius:14px;border-bottom-right-radius:14px}
+  .composer form{display:flex;gap:8px;align-items:flex-end}
+  .composer textarea{flex:1;min-height:120px;resize:vertical}
+  .row-inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .audio-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px}
+  audio{max-width:420px;width:100%}
+  .pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#eef2ff;border:1px solid #e0e7ff;font-size:11px}
+  .hint{font-size:12px;color:#6b7280}
+  .box{border:1px dashed #d1d5db;border-radius:10px;padding:8px;background:#fafbff}
+  .bad{background:#fff0f0;border-color:#ffd6d6}
+  .ok{background:#ecfdf5;border-color:#bbf7d0}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Simulador de llamada · UTEG</h1>
-  <label>Escenario:</label>
-  <select id="scenario">
-    <option value="0">Licenciatura Semestral UdeG</option>
-    <option value="1">Licenciatura Cuatrimestral (CEP/SEP)</option>
-    <option value="2">Bachillerato Intensivo (BIS)</option>
-    <option value="3">Bachillerato General (BGC)</option>
-  </select>
-  <div id="chat" class="chat"></div>
-  <div class="composer">
-    <textarea id="input" placeholder="Escribe tu respuesta aquí…"></textarea>
-    <button id="send">Enviar</button>
+  <h1>Simulador de llamada · UTEG (cliente inteligente)</h1>
+  <div class="grid">
+    <!-- Controles -->
+    <div class="panel">
+      <div class="hd">Controles</div>
+      <div class="bd">
+        <div class="row">
+          <label>Escenario</label>
+          <select id="scenario">
+            <option value="Licenciatura Semestral UdeG">Licenciatura Semestral UdeG</option>
+            <option value="Licenciatura Cuatrimestral (CEP/SEP)">Licenciatura Cuatrimestral (CEP/SEP)</option>
+            <option value="Bachillerato Intensivo (BIS)">Bachillerato Intensivo (BIS)</option>
+            <option value="Bachillerato General (BGC)">Bachillerato General (BGC)</option>
+          </select>
+        </div>
+
+        <div class="row actions">
+          <button id="start" class="btn-accent" type="button" onclick="window._startSim && window._startSim()">▶️ Iniciar conversación</button>
+          <button id="reset" class="ghost" type="button">Reiniciar</button>
+        </div>
+
+        <hr style="border:none;border-top:1px solid #eef1f5;margin:10px 0">
+
+        <div class="row">
+          <label>Estado de permisos</label>
+          <div class="row-inline">
+            <span id="permState" class="pill">Micrófono: desconocido</span>
+            <button id="askPerm" class="ghost" type="button">🔐 Solicitar permiso</button>
+            <button id="enableMic" class="ghost" type="button">🔓 Habilitar micrófono (una vez)</button>
+            <button id="closeMic" class="ghost" type="button" disabled>✖️ Cerrar micrófono</button>
+          </div>
+          <div class="hint">Sugerencia: en la barra de direcciones → candado → Permisos → Micrófono: <b>Permitir</b>.</div>
+        </div>
+
+        <div class="row">
+          <label>Grabación (audio)</label>
+          <div class="row-inline">
+            <button id="recBtn" class="ghost" type="button">🎙️ Grabar</button>
+            <button id="stopBtn" class="ghost" type="button" disabled>■ Detener</button>
+          </div>
+          <div class="audio-row">
+            <audio id="player" controls></audio>
+            <span id="recStatus" class="pill">Micrófono inactivo</span>
+          </div>
+        </div>
+
+        <div class="row">
+          <label>Dictado (transcribir a texto en vivo)</label>
+          <div class="row-inline">
+            <button id="dictBtn" class="ghost" type="button">🗣️ Iniciar dictado</button>
+            <label class="hint"><input type="checkbox" id="autoRestart" checked> Reintentar automáticamente</label>
+            <span id="sttStatus" class="pill">Dictado: inactivo</span>
+          </div>
+          <div id="liveBox" class="box hint">Aquí verás la transcripción en vivo…</div>
+          <div class="hint bad" id="warnBox" style="display:none">Permiso denegado. Cambia a “Permitir” en el candado del navegador y recarga.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat -->
+    <div class="panel chat">
+      <div class="hd">Conversación</div>
+      <div id="log" class="log"></div>
+      <div class="composer">
+        <form id="form">
+          <textarea id="input" placeholder="Escribe o usa el dictado para pegar aquí tu respuesta…" disabled></textarea>
+          <button id="send" type="submit" disabled>Enviar</button>
+        </form>
+      </div>
+    </div>
   </div>
-  <div style="margin-top:10px">
-    <button id="recBtn">🎙️ Grabar</button>
-    <button id="stopBtn" disabled>■ Detener</button>
-    <button id="dlBtn" disabled>⬇️ Descargar</button>
-    <span id="recStatus">Micrófono inactivo</span>
-  </div>
-  <audio id="player" controls style="margin-top:10px;width:100%"></audio>
 </div>
+
 <script>
-const escenarios=[
- "Licenciatura Semestral UdeG",
- "Licenciatura Cuatrimestral (CEP/SEP)",
- "Bachillerato Intensivo (BIS)",
- "Bachillerato General (BGC)"
-];
-const chat=document.getElementById("chat"),input=document.getElementById("input");
-function addMsg(who,text){const d=document.createElement("div");d.className="msg "+who;d.textContent=text;chat.appendChild(d);chat.scrollTop=chat.scrollHeight;}
-document.getElementById("send").onclick=()=>{const t=input.value.trim();if(!t)return;addMsg("you",t);input.value="";setTimeout(()=>addMsg("ai","Gracias por tu respuesta sobre "+escenarios[document.getElementById("scenario").value]+"."),500);};
-// ==== Audio ====
-const recBtn=document.getElementById("recBtn"),stopBtn=document.getElementById("stopBtn"),dlBtn=document.getElementById("dlBtn"),player=document.getElementById("player"),recStatus=document.getElementById("recStatus");
-let mediaRec,chunks=[],lastBlob;
-async function ensureMic(){try{return await navigator.mediaDevices.getUserMedia({audio:true});}catch(e){alert("No pude acceder al micrófono: "+e.message);}}
-recBtn.onclick=async()=>{const stream=await ensureMic();if(!stream)return;chunks=[];mediaRec=new MediaRecorder(stream);mediaRec.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};mediaRec.onstop=()=>{lastBlob=new Blob(chunks,{type:"audio/webm"});player.src=URL.createObjectURL(lastBlob);dlBtn.disabled=false;recStatus.textContent="Grabado listo";};mediaRec.start();recBtn.disabled=true;stopBtn.disabled=false;recStatus.textContent="Grabando…";};
-stopBtn.onclick=()=>{if(mediaRec&&mediaRec.state!=="inactive"){mediaRec.stop();recBtn.disabled=false;stopBtn.disabled=true;}};
-dlBtn.onclick=()=>{if(!lastBlob)return;const a=document.createElement("a");a.href=URL.createObjectURL(lastBlob);a.download="respuesta.webm";a.click();};
+document.addEventListener('DOMContentLoaded', () => {
+  /* ===== Utilidades ===== */
+  function norm(t){return (t||'').toLowerCase().normalize('NFD').replace(/\\p{Diacritic}/gu,'').replace(/\\s+/g,' ').trim();}
+  function any(text, arr){ text=norm(text); return arr.some(k=> text.includes(norm(k))); }
+  function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+  /* ===== Conversación con cliente "inteligente" ===== */
+  const logEl = document.getElementById("log");
+  const inputEl = document.getElementById("input");
+  const sendBtn = document.getElementById("send");
+  const startBtn = document.getElementById("start");
+  const resetBtn = document.getElementById("reset");
+  const scenarioSel = document.getElementById("scenario");
+
+  const state = {
+    phase: 'sondeo',
+    scenario: 'Licenciatura Semestral UdeG',
+    asked: { ocup:false, factor:false, comparo:false, inicio:false },
+    objectionsUsed: false,
+    turns: 0
+  };
+
+  function addMsg(who, html){
+    const row=document.createElement("div"); row.className=`msg ${who}`;
+    const av=document.createElement("div"); av.className=`avatar ${who}`; av.textContent=who==='you'?'A':'CL';
+    const b=document.createElement("div"); b.className='bubble'; b.innerHTML=html; row.append(av,b);
+    logEl.append(row); logEl.scrollTop=logEl.scrollHeight;
+  }
+  function enableInput(on){ inputEl.disabled=!on; sendBtn.disabled=!on; if(on) inputEl.focus(); }
+
+  function startSim(){
+    logEl.innerHTML='';
+    state.phase='sondeo'; state.asked={ocup:false,factor:false,comparo:false,inicio:false}; state.objectionsUsed=false; state.turns=0;
+    state.scenario = scenarioSel.value;
+    addMsg('ai', `Hola, busco informes sobre <b>${state.scenario}</b>. ¿Me ayudas?`);
+    enableInput(true);
+  }
+  window._startSim = startSim; // fallback para onclick inline
+  startBtn.addEventListener('click', startSim);
+  resetBtn.addEventListener('click', ()=>location.reload());
+
+  document.getElementById('form').addEventListener('submit', (e)=>{
+    e.preventDefault();
+    const t = inputEl.value.trim(); if(!t) return;
+    addMsg('you', t);
+    inputEl.value = '';
+    respondSmart(t);
+  });
+
+  const K = {
+    ocup: ["trabajo","trabajo actualmente","empleo","empleas","ocupacion","a que te dedicas"],
+    factor: ["costo","economico","horario","plan de estudios","materias","proyeccion","bolsa de trabajo","beneficios","beca"],
+    comparo: ["otra universidad","otras opciones","comparando","comparado"],
+    inicio: ["iniciar","cuando inicio","cuanto antes","este ciclo","proximo ingreso","fecha de inicio"],
+    programa: ["licenciatura","bachillerato","semestral","cuatrimestral","intensivo","udeg","sep"],
+    costos: ["inscripcion","colegiatura","mensualidad","pagos","costo"],
+    becas: ["beca","descuento","apoyo","convocatoria"],
+    instalaciones: ["instalaciones","laboratorios","taller","biblioteca","estacionamiento"],
+    cierre: ["inscripcion","agendar","cita","visita","proxima llamada","enviar informacion"]
+  };
+
+  function respondSmart(user){
+    const t = norm(user);
+    state.turns++;
+
+    if(K.ocup.some(k=>t.includes(k))) state.asked.ocup = true;
+    if(K.factor.some(k=>t.includes(k))) state.asked.factor = true;
+    if(K.comparo.some(k=>t.includes(k))) state.asked.comparo = true;
+    if(K.inicio.some(k=>t.includes(k))) state.asked.inicio = true;
+
+    if(state.phase === 'sondeo'){
+      if(!state.asked.ocup) return addMsg('ai', pick([
+        "Para entenderte mejor, ¿actualmente trabajas o en qué te desempeñas?",
+        "¿Estás laborando ahora? ¿Cómo es tu horario?"
+      ]));
+      if(!state.asked.factor) return addMsg('ai', pick([
+        "¿Qué te importa más para decidir: costo, horario, plan de estudios o empleabilidad?",
+        "Si tuvieras que elegir un factor clave, ¿cuál sería?"
+      ]));
+      if(!state.asked.comparo) return addMsg('ai', pick([
+        "¿Estás comparando con alguna otra universidad u opción?",
+        "¿Has visto otras alternativas además de UTEG?"
+      ]));
+      if(!state.asked.inicio) return addMsg('ai', pick([
+        "¿Para cuándo te gustaría iniciar si todo encaja?",
+        "¿Planeas comenzar en el próximo ingreso?"
+      ]));
+      state.phase = 'propuesta';
+      return addMsg('ai', pick([
+        "Gracias por el contexto. ¿Podrías explicarme brevemente el plan y cómo está organizado?",
+        "Perfecto. ¿Cómo está estructurado el programa y qué ventajas principales tiene?"
+      ]));
+    }
+
+    if(state.phase === 'propuesta'){
+      const mencionoPrograma = K.programa.some(k=>t.includes(k));
+      const mencionoInst = K.instalaciones.some(k=>t.includes(k));
+      if(!mencionoPrograma){
+        return addMsg('ai', pick([
+          "¿Me confirmas el tipo de programa y la modalidad (semestral, cuatrimestral, intensivo)?",
+          "¿El programa está incorporado (UdeG/SEP) y cómo se organiza el avance?"
+        ]));
+      }
+      if(!mencionoInst){
+        return addMsg('ai', pick([
+          "¿Qué tal las instalaciones y apoyos académicos?",
+          "¿Cuentan con laboratorios, biblioteca o algún espacio especializado?"
+        ]));
+      }
+      state.phase = 'inversion';
+      return addMsg('ai', pick([
+        "Gracias. ¿Cómo está el tema de inversión: inscripción, colegiaturas y si hay apoyos?",
+        "Ok. ¿Me platicas de costos y opciones de apoyo (beca/desc)?"
+      ]));
+    }
+
+    if(state.phase === 'inversion'){
+      const mencionoCostos = K.costos.some(k=>t.includes(k));
+      const mencionoBecas = K.becas.some(k=>t.includes(k));
+      if(!mencionoCostos){
+        return addMsg('ai', pick([
+          "¿Cuál sería la inscripción y el esquema de colegiaturas?",
+          "¿Cómo se pagan las colegiaturas (mensualidades, opciones de pronto pago)?"
+        ]));
+      }
+      if(!mencionoBecas){
+        return addMsg('ai', pick([
+          "¿Manejan becas o algún apoyo económico?",
+          "¿Hay descuentos o convocatorias de beca?"
+        ]));
+      }
+      if(!state.objectionsUsed && Math.random() < 0.35){
+        state.phase = 'objecion';
+        const kind = pick(['costo','instalaciones','competencia','indecision']);
+        state.objectionsUsed = true;
+        if(kind==='costo')   return addMsg('ai',"Me preocupa un poco el costo total, sinceramente.");
+        if(kind==='instalaciones') return addMsg('ai',"Tengo dudas sobre las instalaciones, ¿sí están a la altura?");
+        if(kind==='competencia')   return addMsg('ai',"Estoy comparando con otra universidad y no estoy seguro.");
+        return addMsg('ai',"Sigo indeciso, no estoy al 100% para inscribirme.");
+      }
+      state.phase = 'cierre';
+      return addMsg('ai', pick([
+        "Con lo que me explicaste, ¿cuál sería el siguiente paso para avanzar?",
+        "Creo que ya tengo una buena idea; ¿qué seguiría a partir de aquí?"
+      ]));
+    }
+
+    if(state.phase === 'objecion'){
+      state.phase = 'cierre';
+      return addMsg('ai', pick([
+        "Gracias por aclararlo. ¿Cómo podemos continuar el proceso?",
+        "Bien, ¿qué paso sugieres para seguir avanzando?"
+      ]));
+    }
+
+    if(state.phase === 'cierre'){
+      const proponeCierre = K.cierre.some(k=>t.includes(k));
+      if(proponeCierre){
+        const confirma = Math.random() < 0.5;
+        if(confirma){
+          const pideRef = Math.random() < 0.6;
+          if(pideRef){
+            state.phase = 'referidos';
+            return addMsg('ai', "Me inscribo. Por cierto, tengo algunos conocidos que podrían estar interesados.");
+          }
+          addMsg('ai', "Perfecto, procedamos entonces.");
+          enableInput(false);
+          return;
+        }else{
+          state.phase = 'referidos';
+          return addMsg('ai', "Aún no confirmo. ¿Te comparto datos de alguien más a quien le pueda servir?");
+        }
+      }
+      return addMsg('ai', pick([
+        "Si te parece, ¿agendamos una cita o me compartes cómo iniciar la inscripción digital?",
+        "¿Te parece si definimos una fecha para el siguiente paso?"
+      ]));
+    }
+
+    if(state.phase === 'referidos'){
+      addMsg('ai', pick([
+        "Gracias, con eso sería todo de mi lado.",
+        "Perfecto, quedó claro. ¡Gracias!"
+      ]));
+      enableInput(false);
+      return;
+    }
+    addMsg('ai', "Entendido.");
+  }
+
+  /* ===== Permisos y stream compartido ===== */
+  const permState = document.getElementById('permState');
+  const askPermBtn = document.getElementById('askPerm');
+  const enableMicBtn = document.getElementById('enableMic');
+  const closeMicBtn = document.getElementById('closeMic');
+  const warnBox = document.getElementById('warnBox');
+
+  let micStream = null;
+  let micLock = false;
+  let permDenied = false;
+  let lastPermState = 'unknown';
+
+  function updatePermBadge(state) {
+    lastPermState = state;
+    permState.textContent = 'Micrófono: ' + state;
+    permState.classList.remove('ok','bad');
+    if (state === 'granted') permState.classList.add('ok');
+    if (state === 'denied')  permState.classList.add('bad');
+  }
+
+  async function checkPermission() {
+    try {
+      if (!navigator.permissions) { updatePermBadge('desconocido'); return 'unknown'; }
+      const q = await navigator.permissions.query({ name: 'microphone' });
+      updatePermBadge(q.state);
+      q.onchange = () => updatePermBadge(q.state);
+      return q.state;
+    } catch {
+      updatePermBadge('desconocido');
+      return 'unknown';
+    }
+  }
+
+  async function ensureMicOnce() {
+    if (permDenied) { warnBox.style.display = 'block'; throw new Error('Permission previously denied'); }
+    if (micStream) return micStream;
+    if (micLock) throw new Error('Mic request in progress');
+    micLock = true;
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+      });
+      micStream = s;
+      closeMicBtn.disabled = false;
+      warnBox.style.display = 'none';
+      updatePermBadge('granted');
+      return s;
+    } catch (err) {
+      if (err && (err.name === 'NotAllowedError' || err.name === 'SecurityError')) {
+        permDenied = true;
+        warnBox.style.display = 'block';
+        updatePermBadge('denied');
+      }
+      throw err;
+    } finally {
+      micLock = false;
+    }
+  }
+
+  function closeMic() {
+    if (micStream) { micStream.getTracks().forEach(t=>t.stop()); micStream=null; }
+    closeMicBtn.disabled = true;
+  }
+
+  askPermBtn?.addEventListener('click', async () => {
+    try { await ensureMicOnce(); } catch(e) {}
+  });
+  enableMicBtn?.addEventListener('click', async () => {
+    try { await ensureMicOnce(); alert('Micrófono habilitado para esta sesión.'); }
+    catch(e) {}
+  });
+  closeMicBtn?.addEventListener('click', () => { closeMic(); });
+
+  checkPermission();
+
+  /* ===== Grabación (MediaRecorder) ===== */
+  const recBtn=document.getElementById('recBtn'), stopBtn=document.getElementById('stopBtn');
+  const recStatus=document.getElementById('recStatus'), player=document.getElementById('player');
+  let mediaRec=null, lastBlob=null;
+
+  function setRecUI(mode){
+    if(mode==='rec'){ recBtn.disabled=true; stopBtn.disabled=false; recStatus.textContent='Grabando…'; }
+    else if(mode==='idle'){ recBtn.disabled=false; stopBtn.disabled=true; recStatus.textContent= lastBlob?'Grabación lista':'Micrófono inactivo'; }
+    else if(mode==='stopping'){ recStatus.textContent='Procesando…'; }
+  }
+
+  recBtn.addEventListener('click', async()=>{
+    try{
+      const s = await ensureMicOnce();
+      const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
+      const chunks = [];
+      mediaRec = new MediaRecorder(s,{mimeType:mime});
+      mediaRec.ondataavailable = e => { if(e.data && e.data.size>0) chunks.push(e.data); };
+      mediaRec.onstop = ()=>{
+        lastBlob = new Blob(chunks,{type:mediaRec.mimeType});
+        player.src = URL.createObjectURL(lastBlob);
+        setRecUI('idle');
+      };
+      mediaRec.start(100);
+      setRecUI('rec');
+    }catch(e){
+      alert('No se pudo iniciar grabación: ' + (e.message || e.name));
+    }
+  });
+  stopBtn.addEventListener('click', ()=>{
+    if(mediaRec && mediaRec.state!=='inactive'){ setRecUI('stopping'); mediaRec.stop(); }
+  });
+
+  /* ===== Dictado (Web Speech API) sin repeticiones ===== */
+  const dictBtn = document.getElementById('dictBtn');
+  const autoRestart = document.getElementById('autoRestart');
+  const sttStatus = document.getElementById('sttStatus');
+  const liveBox = document.getElementById('liveBox');
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+  let stt=null, sttOn=false, sttWantsOn=false;
+  let finalTranscript = "";      // solo frases confirmadas (isFinal)
+  let interimTranscript = "";    // provisional
+  let lastResultIndex = 0;       // evita reprocesar
+
+  function initStt(){
+    if(!SpeechRecognition){ alert('Tu navegador no soporta dictado (Web Speech API). Recomendado: Chrome/Edge en escritorio.'); return null; }
+    const r=new SpeechRecognition(); r.lang='es-MX'; r.interimResults=true; r.continuous=true;
+
+    r.onstart=()=>{ sttOn=true; sttStatus.textContent='Dictado: activo'; dictBtn.textContent='■ Detener dictado'; };
+
+    r.onresult=(ev)=>{
+      interimTranscript = "";
+      for(let i=lastResultIndex; i<ev.results.length; i++){
+        const res = ev.results[i];
+        const txt = res[0].transcript.trim();
+        if(res.isFinal){
+          finalTranscript = (finalTranscript + " " + txt).replace(/\\s+/g," ").trim();
+          lastResultIndex = i + 1;
+        }else{
+          interimTranscript = (interimTranscript + " " + txt).replace(/\\s+/g," ").trim();
+        }
+      }
+      const full = (finalTranscript + " " + interimTranscript).replace(/\\s+/g," ").trim();
+      liveBox.textContent = full || "…";
+      enableInput(true);
+      inputEl.value = full;
+    };
+
+    r.onerror=(e)=>{
+      sttOn=false; sttStatus.textContent='Dictado: error ('+e.error+')';
+      if (e.error === 'not-allowed' || permDenied || lastPermState === 'denied') { sttWantsOn=false; return; }
+      if (sttWantsOn && autoRestart.checked) { try{ r.start(); }catch(_){} }
+    };
+
+    r.onend=()=>{
+      sttOn=false; sttStatus.textContent='Dictado: inactivo';
+      lastResultIndex = 0;
+      if (permDenied || lastPermState === 'denied') { sttWantsOn=false; return; }
+      if (sttWantsOn && autoRestart.checked) { try{ r.start(); }catch(_){} }
+    };
+    return r;
+  }
+
+  dictBtn.addEventListener('click', async ()=>{
+    try{ await ensureMicOnce(); }catch(e){ /* si negó, ya mostramos arriba */ }
+    if (permDenied || lastPermState === 'denied') { sttStatus.textContent='Dictado: permiso denegado'; return; }
+
+    if(!stt){ stt = initStt(); if(!stt) return; }
+    if(!sttWantsOn){
+      sttWantsOn = true;
+      finalTranscript = ""; interimTranscript = ""; lastResultIndex = 0; liveBox.textContent = "(escuchando…)";
+      try{ if(!sttOn) stt.start(); }catch(_){} 
+    }else{
+      sttWantsOn = false;
+      try{ if(sttOn) stt.stop(); }catch(_){} 
+      sttStatus.textContent='Dictado: inactivo'; dictBtn.textContent='🗣️ Iniciar dictado';
+    }
+  });
+});
 </script>
 </body>
 </html>
