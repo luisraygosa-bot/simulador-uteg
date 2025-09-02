@@ -109,6 +109,13 @@ document.addEventListener('DOMContentLoaded', () => {
   function norm(t){return (t||'').toLowerCase().normalize('NFD').replace(/\\p{Diacritic}/gu,'').replace(/\\s+/g,' ').trim();}
   function any(text, arr){ text=norm(text); return arr.some(k=> text.includes(norm(k))); }
   function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+  function speak(text){
+    if(!('speechSynthesis' in window)) return;
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang='es-MX';
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+  }
 
   /* ===== Conversación con cliente "inteligente" ===== */
   const logEl = document.getElementById("log");
@@ -131,6 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const av=document.createElement("div"); av.className=`avatar ${who}`; av.textContent=who==='you'?'A':'CL';
     const b=document.createElement("div"); b.className='bubble'; b.innerHTML=html; row.append(av,b);
     logEl.append(row); logEl.scrollTop=logEl.scrollHeight;
+    if(who==='ai') speak(b.textContent);
   }
   function enableInput(on){ inputEl.disabled=!on; sendBtn.disabled=!on; if(on) inputEl.focus(); }
 
