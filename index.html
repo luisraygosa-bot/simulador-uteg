@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Simulador UTEG · Cliente inteligente (FIX inicio)</title>
+<title>Simulador UTEG · Solo dictado (IA cliente)</title>
 <style>
-  :root{--brand:#003C71;--accent:#00A3AD;--ink:#1f2937;--muted:#6b7280;--bg:#f6f7fb;--card:#fff;--ring:rgba(0,60,113,.18)}
+  :root{--brand:#003C71;--accent:#00A3AD;--ink:#111827;--muted:#6b7280;--bg:#f6f7fb;--card:#fff;--ring:rgba(0,60,113,.18)}
   *{box-sizing:border-box} html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif}
   .wrap{max-width:980px;margin:20px auto;padding:16px}
   h1{font-size:22px;margin:0 0 12px}
@@ -34,8 +34,6 @@
   .composer form{display:flex;gap:8px;align-items:flex-end}
   .composer textarea{flex:1;min-height:120px;resize:vertical}
   .row-inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  .audio-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px}
-  audio{max-width:420px;width:100%}
   .pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#eef2ff;border:1px solid #e0e7ff;font-size:11px}
   .hint{font-size:12px;color:#6b7280}
   .box{border:1px dashed #d1d5db;border-radius:10px;padding:8px;background:#fafbff}
@@ -45,7 +43,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Simulador de llamada · UTEG (cliente inteligente)</h1>
+  <h1>Simulador de llamada · UTEG (solo dictado)</h1>
   <div class="grid">
     <!-- Controles -->
     <div class="panel">
@@ -73,22 +71,9 @@
           <div class="row-inline">
             <span id="permState" class="pill">Micrófono: desconocido</span>
             <button id="askPerm" class="ghost" type="button">🔐 Solicitar permiso</button>
-            <button id="enableMic" class="ghost" type="button">🔓 Habilitar micrófono (una vez)</button>
             <button id="closeMic" class="ghost" type="button" disabled>✖️ Cerrar micrófono</button>
           </div>
-          <div class="hint">Sugerencia: en la barra de direcciones → candado → Permisos → Micrófono: <b>Permitir</b>.</div>
-        </div>
-
-        <div class="row">
-          <label>Grabación (audio)</label>
-          <div class="row-inline">
-            <button id="recBtn" class="ghost" type="button">🎙️ Grabar</button>
-            <button id="stopBtn" class="ghost" type="button" disabled>■ Detener</button>
-          </div>
-          <div class="audio-row">
-            <audio id="player" controls></audio>
-            <span id="recStatus" class="pill">Micrófono inactivo</span>
-          </div>
+          <div class="hint">En la barra de direcciones → candado → Permisos → Micrófono: <b>Permitir</b>.</div>
         </div>
 
         <div class="row">
@@ -156,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
     addMsg('ai', `Hola, busco informes sobre <b>${state.scenario}</b>. ¿Me ayudas?`);
     enableInput(true);
   }
-  window._startSim = startSim; // fallback para onclick inline
+  window._startSim = startSim;
   startBtn.addEventListener('click', startSim);
   resetBtn.addEventListener('click', ()=>location.reload());
 
@@ -309,10 +294,9 @@ document.addEventListener('DOMContentLoaded', () => {
     addMsg('ai', "Entendido.");
   }
 
-  /* ===== Permisos y stream compartido ===== */
+  /* ===== Permisos micrófono (solo para dictado) ===== */
   const permState = document.getElementById('permState');
   const askPermBtn = document.getElementById('askPerm');
-  const enableMicBtn = document.getElementById('enableMic');
   const closeMicBtn = document.getElementById('closeMic');
   const warnBox = document.getElementById('warnBox');
 
@@ -348,9 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (micLock) throw new Error('Mic request in progress');
     micLock = true;
     try {
-      const s = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-      });
+      const s = await navigator.mediaDevices.getUserMedia({ audio: true });
       micStream = s;
       closeMicBtn.disabled = false;
       warnBox.style.display = 'none';
@@ -376,46 +358,9 @@ document.addEventListener('DOMContentLoaded', () => {
   askPermBtn?.addEventListener('click', async () => {
     try { await ensureMicOnce(); } catch(e) {}
   });
-  enableMicBtn?.addEventListener('click', async () => {
-    try { await ensureMicOnce(); alert('Micrófono habilitado para esta sesión.'); }
-    catch(e) {}
-  });
   closeMicBtn?.addEventListener('click', () => { closeMic(); });
 
   checkPermission();
-
-  /* ===== Grabación (MediaRecorder) ===== */
-  const recBtn=document.getElementById('recBtn'), stopBtn=document.getElementById('stopBtn');
-  const recStatus=document.getElementById('recStatus'), player=document.getElementById('player');
-  let mediaRec=null, lastBlob=null;
-
-  function setRecUI(mode){
-    if(mode==='rec'){ recBtn.disabled=true; stopBtn.disabled=false; recStatus.textContent='Grabando…'; }
-    else if(mode==='idle'){ recBtn.disabled=false; stopBtn.disabled=true; recStatus.textContent= lastBlob?'Grabación lista':'Micrófono inactivo'; }
-    else if(mode==='stopping'){ recStatus.textContent='Procesando…'; }
-  }
-
-  recBtn.addEventListener('click', async()=>{
-    try{
-      const s = await ensureMicOnce();
-      const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
-      const chunks = [];
-      mediaRec = new MediaRecorder(s,{mimeType:mime});
-      mediaRec.ondataavailable = e => { if(e.data && e.data.size>0) chunks.push(e.data); };
-      mediaRec.onstop = ()=>{
-        lastBlob = new Blob(chunks,{type:mediaRec.mimeType});
-        player.src = URL.createObjectURL(lastBlob);
-        setRecUI('idle');
-      };
-      mediaRec.start(100);
-      setRecUI('rec');
-    }catch(e){
-      alert('No se pudo iniciar grabación: ' + (e.message || e.name));
-    }
-  });
-  stopBtn.addEventListener('click', ()=>{
-    if(mediaRec && mediaRec.state!=='inactive'){ setRecUI('stopping'); mediaRec.stop(); }
-  });
 
   /* ===== Dictado (Web Speech API) sin repeticiones ===== */
   const dictBtn = document.getElementById('dictBtn');
@@ -449,7 +394,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       const full = (finalTranscript + " " + interimTranscript).replace(/\\s+/g," ").trim();
       liveBox.textContent = full || "…";
-      enableInput(true);
+      // No enviamos automáticamente; el asesor decide cuándo enviar
       inputEl.value = full;
     };
 
@@ -477,6 +422,7 @@ document.addEventListener('DOMContentLoaded', () => {
       sttWantsOn = true;
       finalTranscript = ""; interimTranscript = ""; lastResultIndex = 0; liveBox.textContent = "(escuchando…)";
       try{ if(!sttOn) stt.start(); }catch(_){} 
+      enableInput(true); // por si no le habían dado iniciar aún
     }else{
       sttWantsOn = false;
       try{ if(sttOn) stt.stop(); }catch(_){} 
